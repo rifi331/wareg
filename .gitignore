@@ -1,0 +1,38 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/wareg
+/bin/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment variables (NEVER commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Static uploads (keep the dir via .gitkeep, ignore user uploads)
+static/uploads/*
+!static/uploads/.gitkeep

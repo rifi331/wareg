@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wareg - Recipe Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <nav class="bg-emerald-600 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4 gap-4">
+                <a href="/" class="text-2xl font-bold hover:text-emerald-100">Wareg</a>
+                <div class="flex gap-1 sm:gap-2 flex-wrap">
+                    <button data-tab="ingredients" class="tab-btn px-3 py-2 rounded hover:bg-emerald-700">Ingredients</button>
+                    <button data-tab="recipes" class="tab-btn px-3 py-2 rounded hover:bg-emerald-700">Recipes</button>
+                    <button data-tab="pantry" class="tab-btn px-3 py-2 rounded hover:bg-emerald-700">Pantry</button>
+                    <button data-tab="meal-plan" class="tab-btn px-3 py-2 rounded hover:bg-emerald-700">Meal Plan</button>
+                    <button data-tab="matches" class="tab-btn px-3 py-2 rounded hover:bg-emerald-700">What Can I Cook?</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+
+        <!-- Ingredients -->
+        <div id="ingredients-section" class="section hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Ingredients</h2>
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Add New Ingredient</h3>
+                <form id="ingredient-add-form" hx-post="/api/ingredients" hx-target="#ingredients-list-body" hx-swap="innerHTML"
+                      hx-on::after-request="if(event.detail.xhr.status<300){this.reset(); refreshIngredientCache(); showToast('Ingredient added.','success');}"
+                      class="flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium mb-1">Name</label>
+                        <input type="text" id="new-ingredient-name" name="name" list="existing-ingredients" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g. Chicken" autocomplete="off">
+                        <datalist id="existing-ingredients"></datalist>
+                        <p id="ingredient-dup-hint" class="text-xs text-amber-600 mt-1 hidden">This ingredient already exists.</p>
+                    </div>
+                    <div class="w-40">
+                        <label class="block text-sm font-medium mb-1">Default unit</label>
+                        <select name="unit" data-unit-select class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="">(none)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition">Add Ingredient</button>
+                </form>
+            </div>
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ingredients-list-body" class="bg-white divide-y divide-gray-200"
+                           hx-get="/api/ingredients" hx-trigger="load" hx-swap="innerHTML"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recipes -->
+        <div id="recipes-section" class="section hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">Recipes</h2>
+                <button onclick="toggleRecipeForm()" class="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition">Add New Recipe</button>
+            </div>
+            <div id="recipe-form-container" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden"></div>
+            <div id="recipes-list" hx-get="/api/recipes" hx-trigger="load" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
+        </div>
+
+        <!-- Pantry -->
+        <div id="pantry-section" class="section hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Pantry</h2>
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Add to Pantry</h3>
+                <form hx-post="/api/pantry" hx-target="#pantry-list" hx-swap="innerHTML"
+                      hx-on::after-request="if(event.detail.xhr.status<300){this.reset(); showToast('Added to pantry.','success');}"
+                      class="flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium mb-1">Ingredient</label>
+                        <div class="ingredient-combo relative">
+                            <input type="text" class="ic-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Type or search ingredient..." autocomplete="off">
+                            <input type="hidden" name="ingredient_id" class="ic-id">
+                            <div class="ic-list absolute z-20 left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto hidden"></div>
+                        </div>
+                    </div>
+                    <div class="w-28">
+                        <label class="block text-sm font-medium mb-1">Quantity</label>
+                        <input type="number" step="0.01" min="0.01" name="current_quantity" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div class="w-28">
+                        <label class="block text-sm font-medium mb-1">Unit</label>
+                        <select name="unit" required data-unit-select class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="">Unit...</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition">Add</button>
+                </form>
+                <p class="text-xs text-gray-400 mt-2">Re-adding an existing ingredient adds to its quantity (same unit).</p>
+            </div>
+            <div id="pantry-list" hx-get="/api/pantry" hx-trigger="load" class="bg-white rounded-lg shadow-md overflow-hidden"></div>
+        </div>
+
+        <!-- Meal Plan -->
+        <div id="meal-plan-section" class="section hidden">
+            <h2 class="text-3xl font-bold mb-6 text-gray-800">Meal Planner</h2>
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Add Meal to Plan</h3>
+                <form hx-post="/api/meal-plan" hx-target="#meal-plan-list" hx-swap="innerHTML"
+                      hx-on::after-request="if(event.detail.xhr.status<300){this.reset(); showToast('Meal added to plan.','success');}"
+                      class="flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium mb-1">Recipe</label>
+                        <select name="recipe_id" required data-recipe-select class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="">Select recipe...</option>
+                        </select>
+                    </div>
+                    <div class="w-48">
+                        <label class="block text-sm font-medium mb-1">Date</label>
+                        <input type="date" name="plan_date" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <button type="submit" class="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition">Add</button>
+                </form>
+            </div>
+            <div id="meal-plan-list" hx-get="/api/meal-plan" hx-trigger="load" class="bg-white rounded-lg shadow-md overflow-hidden"></div>
+        </div>
+
+        <!-- What Can I Cook -->
+        <div id="matches-section" class="section hidden">
+            <h2 class="text-3xl font-bold mb-2 text-gray-800">What Can I Cook?</h2>
+            <p class="text-gray-600 mb-6">Shows recipes where your pantry has at least <strong>80%</strong> of the <strong>mandatory</strong> ingredients by name (optional ingredients are ignored; you convert units yourself). Sorted by match %.</p>
+            <div id="matches-list" hx-get="/api/pantry/matches" hx-trigger="load" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
+            <div class="mt-4">
+                <button onclick="htmx.trigger('#matches-list','load')" class="text-sm text-emerald-600 hover:underline">Refresh matches</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Shared front-end logic (recipe form, toasts, dropdowns, units) -->
+    <script src="/static/recipe-form.js"></script>
+    <script>
+        // Dashboard-specific tab navigation + init.
+        function showSection(name){
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(name + '-section').classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('bg-emerald-700', b.dataset.tab === name);
+            });
+            if(name === 'recipes' || name === 'pantry' || name === 'meal-plan'){
+                refreshSelects();
+            }
+        }
+        function refreshSelects(){ fillIngredientSelects(); fillRecipeSelects(); }
+
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.addEventListener('click', () => showSection(b.dataset.tab));
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fillUnitSelects();
+            fillIngredientSelects();
+            fillRecipeSelects();
+            wireNewIngredientCheck();
+            showSection('ingredients');
+        });
+    </script>
+</body>
+</html>
