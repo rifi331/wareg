@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.webkit.HttpAuthHandler
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -59,6 +60,16 @@ class MainActivity : Activity() {
                 if (scheme == "http" || scheme == "https") return false
                 runCatching { startActivity(Intent(Intent.ACTION_VIEW, u)) }
                 return true
+            }
+
+            // Supply Basic Auth credentials when the server requires them; the
+            // WebView caches them for all subsequent requests (incl. HTMX/XHR).
+            override fun onReceivedHttpAuthRequest(
+                view: WebView, handler: HttpAuthHandler, host: String, realm: String
+            ) {
+                val u = SettingsStore.getAuthUser(this@MainActivity)
+                val p = SettingsStore.getAuthPass(this@MainActivity)
+                if (u.isNotEmpty() || p.isNotEmpty()) handler.proceed(u, p) else handler.cancel()
             }
         }
     }

@@ -176,7 +176,7 @@ The workflow will automatically run on push to `main` branch, or you can manuall
 
 - **Database URL**: 
   ```
-  postgres://youruser:yourpassword@192.168.100.126:5432/postgres?search_path=wareg
+  postgres://youruser:yourpassword@your-db-host:5432/postgres?search_path=wareg
   ```
   Replace with your actual credentials.
 

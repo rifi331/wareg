@@ -6,7 +6,7 @@ This is a condensed version of the setup process. For detailed steps, see [CHECK
 
 ```bash
 # 1. Setup local database
-psql -h 192.168.100.126 -p 5432 -U postgres -d postgres -f sql/schema.sql
+psql -h your-db-host -p 5432 -U postgres -d postgres -f sql/schema.sql
 
 # 2. Configure environment
 cp .env.example .env
@@ -61,13 +61,13 @@ go vet ./...
 ### Database
 ```bash
 # Connect to database
-psql -h 192.168.100.126 -p 5432 -U postgres -d postgres
+psql -h your-db-host -p 5432 -U postgres -d postgres
 
 # Run schema
-psql -h 192.168.100.126 -p 5432 -U postgres -d postgres -f sql/schema.sql
+psql -h your-db-host -p 5432 -U postgres -d postgres -f sql/schema.sql
 
 # Check tables
-psql -h 192.168.100.126 -p 5432 -U postgres -d postgres -c "\dt wareg.*"
+psql -h your-db-host -p 5432 -U postgres -d postgres -c "\dt wareg.*"
 ```
 
 ### Git
@@ -106,7 +106,7 @@ docker stop wareg-app
 
 Example DATABASE_URL:
 ```
-postgres://postgres:PASSWORD@192.168.100.126:5432/postgres?search_path=wareg
+postgres://postgres:PASSWORD@your-db-host:5432/postgres?search_path=wareg
 ```
 
 ## URLs After GitHub Setup
@@ -136,7 +136,7 @@ lsof -i :7001
 
 ### Database Connection Failed
 
-1. Check PostgreSQL is running at `192.168.100.126:5432`
+1. Check PostgreSQL is running at `your-db-host:5432`
 2. Verify credentials in `.env`
 3. Test with psql directly
 

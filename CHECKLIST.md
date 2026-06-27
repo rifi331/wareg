@@ -3,10 +3,10 @@
 ## Part 1: Local Debugging & Testing
 
 ### Step 1: Database Setup
-- [ ] Ensure PostgreSQL is running at `192.168.100.126:5432`
+- [ ] Ensure PostgreSQL is running at `your-db-host:5432`
 - [ ] Connect to database and verify connection:
   ```bash
-  psql -h 192.168.100.126 -p 5432 -U postgres -d postgres
+  psql -h your-db-host -p 5432 -U postgres -d postgres
   ```
 - [ ] Create `wareg` schema if not exists:
   ```sql
@@ -14,7 +14,7 @@
   ```
 - [ ] Run the schema file:
   ```bash
-  psql -h 192.168.100.126 -p 5432 -U postgres -d postgres -f sql/schema.sql
+  psql -h your-db-host -p 5432 -U postgres -d postgres -f sql/schema.sql
   ```
 - [ ] Verify tables were created:
   ```sql
@@ -28,14 +28,14 @@
   ```
 - [ ] Edit `.env` file with your database credentials:
   ```
-  DATABASE_URL=postgres://postgres:YOUR_PASSWORD@192.168.100.126:5432/postgres?search_path=wareg
+  DATABASE_URL=postgres://postgres:YOUR_PASSWORD@your-db-host:5432/postgres?search_path=wareg
   PORT=7001
   ```
 - [ ] Verify the format is correct:
   - Protocol: `postgres://`
   - Username: `postgres`
   - Password: Your actual password
-  - Host: `192.168.100.126`
+  - Host: `your-db-host`
   - Port: `5432`
   - Database: `postgres`
   - Schema: `search_path=wareg`
@@ -70,7 +70,7 @@
   func main() {
       dbURL := os.Getenv("DATABASE_URL")
       if dbURL == "" {
-          dbURL = "postgres://postgres:YOUR_PASSWORD@192.168.100.126:5432/postgres?search_path=wareg"
+          dbURL = "postgres://postgres:YOUR_PASSWORD@your-db-host:5432/postgres?search_path=wareg"
       }
       pool, err := pgxpool.New(context.Background(), dbURL)
       if err != nil {
@@ -188,11 +188,11 @@
 ### Step 11: Cleanup Test Data (Optional)
 - [ ] Delete test recipes:
   ```sql
-  psql -h 192.168.100.126 -p 5432 -U postgres -d postgres -c "DELETE FROM wareg.recipes WHERE title = 'Test Recipe';"
+  psql -h your-db-host -p 5432 -U postgres -d postgres -c "DELETE FROM wareg.recipes WHERE title = 'Test Recipe';"
   ```
 - [ ] Clear test pantry items:
   ```sql
-  psql -h 192.168.100.126 -p 5432 -U postgres -d postgres -c "DELETE FROM wareg.pantry;"
+  psql -h your-db-host -p 5432 -U postgres -d postgres -c "DELETE FROM wareg.pantry;"
   ```
 
 ---
@@ -400,13 +400,13 @@
 - [ ] TrueNAS SCALE is running and accessible
 - [ **Apps** feature is enabled
 - [ ] PostgreSQL is either:
-  - [ ] External database at `192.168.100.126:5432`, OR
+  - [ ] External database at `your-db-host:5432`, OR
   - [ ] Deployed as TrueNAS app with known connection string
 
 ### Step 28: Note Database Connection String for TrueNAS
 - [ ] For external PostgreSQL (your current setup):
   ```
-  postgres://postgres:YOUR_PASSWORD@192.168.100.126:5432/postgres?search_path=wareg
+  postgres://postgres:YOUR_PASSWORD@your-db-host:5432/postgres?search_path=wareg
   ```
 - [ ] For TrueNAS PostgreSQL app:
   ```
@@ -427,7 +427,7 @@
 
 ### Can't Connect to Database
 - [ ] PostgreSQL is running
-- [ ] Host IP is correct (192.168.100.126)
+- [ ] Host IP is correct (your-db-host)
 - [ ] Port is correct (5432)
 - [ ] Username/password is correct
 - [ ] Database name is correct (postgres)
@@ -490,7 +490,7 @@ docker build -t wareg:latest .
 docker run -d -p 7001:7001 -e DATABASE_URL="..." wareg:latest
 
 # Database connection test
-psql -h 192.168.100.126 -p 5432 -U postgres -d postgres
+psql -h your-db-host -p 5432 -U postgres -d postgres
 ```
 
 ---

@@ -89,13 +89,13 @@ Option 2: Set up `DATABASE_URL` environment variable:
 
 ```bash
 # On Linux/Mac
-export DATABASE_URL="postgres://postgres:your_password@192.168.100.126:5432/postgres?search_path=wareg"
+export DATABASE_URL="postgres://postgres:your_password@your-db-host:5432/postgres?search_path=wareg"
 
 # On Windows (PowerShell)
-$env:DATABASE_URL="postgres://postgres:your_password@192.168.100.126:5432/postgres?search_path=wareg"
+$env:DATABASE_URL="postgres://postgres:your_password@your-db-host:5432/postgres?search_path=wareg"
 
 # On Windows (Command Prompt)
-set DATABASE_URL=postgres://postgres:your_password@192.168.100.126:5432/postgres?search_path=wareg"
+set DATABASE_URL=postgres://postgres:your_password@your-db-host:5432/postgres?search_path=wareg"
 ```
 
 **Note**: The application uses the `wareg` schema in PostgreSQL. The schema will be created automatically when you run the schema.sql file.

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -140,14 +141,33 @@ func main() {
 	e := echolib.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+
+	// Whole-site HTTP Basic Auth, driven by AUTH_USERS="user:pass,user:pass".
+	// When unset, no auth (local dev). /healthz is skipped so probes still pass.
+	if users := parseAuthUsers(os.Getenv("AUTH_USERS")); len(users) > 0 {
+		e.Use(middleware.BasicAuthWithConfig(middleware.BasicAuthConfig{
+			Skipper: func(c echolib.Context) bool {
+				return c.Request().URL.Path == "/healthz"
+			},
+			Validator: func(user, pass string, _ echolib.Context) (bool, error) {
+				expected, ok := users[user]
+				if !ok {
+					return false, nil
+				}
+				return subtle.ConstantTimeCompare([]byte(pass), []byte(expected)) == 1, nil
+			},
+		}))
+	}
+
 	e.Use(middleware.CORS())
 	e.Use(middleware.RequestID())
 
 	// Static files (the original image dir was empty + not copied into Docker).
 	e.Static("/static", "static")
 
-	// Health endpoint used by Docker/k8s probes.
-	e.GET("/healthz", func(c echolib.Context) error {
+	// Health endpoint used by Docker/k8s probes (accept GET and HEAD — probes
+	// like `wget --spider` issue HEAD requests).
+	e.Match([]string{http.MethodGet, http.MethodHead}, "/healthz", func(c echolib.Context) error {
 		return c.String(http.StatusOK, "ok")
 	})
 
@@ -201,6 +221,18 @@ func main() {
 // preventing XSS. (see RECREATE_PROMPT 5.4)
 func esc(s string) string {
 	return html.EscapeString(s)
+}
+
+// parseAuthUsers parses AUTH_USERS="user:pass,user:pass" into a map.
+func parseAuthUsers(s string) map[string]string {
+	users := make(map[string]string)
+	for _, pair := range strings.Split(s, ",") {
+		kv := strings.SplitN(strings.TrimSpace(pair), ":", 2)
+		if len(kv) == 2 && kv[0] != "" && kv[1] != "" {
+			users[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
+	}
+	return users
 }
 
 // safeURL returns the URL only if it uses an http(s) scheme. HTML-escaping alone

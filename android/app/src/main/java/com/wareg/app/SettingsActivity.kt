@@ -21,11 +21,15 @@ class SettingsActivity : Activity() {
         setContentView(R.layout.activity_settings)
 
         val urlInput = findViewById<EditText>(R.id.url_input)
+        val authUserInput = findViewById<EditText>(R.id.auth_user_input)
+        val authPassInput = findViewById<EditText>(R.id.auth_pass_input)
         val reminderSwitch = findViewById<Switch>(R.id.reminder_switch)
         val hourButton = findViewById<Button>(R.id.hour_button)
         val save = findViewById<Button>(R.id.save_button)
 
         urlInput.setText(SettingsStore.getServerUrl(this))
+        authUserInput.setText(SettingsStore.getAuthUser(this))
+        authPassInput.setText(SettingsStore.getAuthPass(this))
         reminderSwitch.isChecked = SettingsStore.isReminderEnabled(this)
         var hour = SettingsStore.getReminderHour(this)
         hourButton.text = formatHour(hour)
@@ -44,6 +48,8 @@ class SettingsActivity : Activity() {
                 return@setOnClickListener
             }
             SettingsStore.setServerUrl(this, normalized)
+            SettingsStore.setAuthUser(this, authUserInput.text.toString().trim())
+            SettingsStore.setAuthPass(this, authPassInput.text.toString())
             SettingsStore.setReminderEnabled(this, reminderSwitch.isChecked)
             SettingsStore.setReminderHour(this, hour)
             ReminderScheduler.update(this)

@@ -41,7 +41,7 @@ class MealPlanReceiver : BroadcastReceiver() {
         val base = SettingsStore.getServerUrl(ctx)
         if (base.isEmpty()) return
 
-        val titles = fetchTodayMeals(base)
+        val titles = fetchTodayMeals(ctx, base)
         if (titles.isNotEmpty()) {
             ensureChannel(ctx)
             notify(ctx, titles)
@@ -50,7 +50,7 @@ class MealPlanReceiver : BroadcastReceiver() {
         ReminderScheduler.update(ctx)
     }
 
-    private fun fetchTodayMeals(base: String): List<String> {
+    private fun fetchTodayMeals(ctx: Context, base: String): List<String> {
         val out = ArrayList<String>()
         var conn: HttpURLConnection? = null
         try {
@@ -59,6 +59,8 @@ class MealPlanReceiver : BroadcastReceiver() {
                 readTimeout = 10_000
                 useCaches = false
                 setRequestProperty("Accept", "application/json")
+                val auth = SettingsStore.getBasicAuthHeader(ctx)
+                if (auth.isNotEmpty()) setRequestProperty("Authorization", auth)
             }
             if (conn.responseCode in 200..299) {
                 val body = conn.inputStream.bufferedReader().use { it.readText() }
