@@ -1,0 +1,16 @@
+# Keep the Docker build context small and exclude everything the container
+# does not need at runtime (the Go binary + frontend/ + static/ are all it uses).
+.git
+.github
+android
+helm
+sql
+*.md
+.env
+.env.*
+*.apk
+*.exe
+*.exe~
+**/build/
+**/.gradle/
+**/.idea/
