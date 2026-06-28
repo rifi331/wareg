@@ -162,14 +162,20 @@ function wireIngredientCombos(){
             idField.value = item.dataset.id;
             input.value = item.dataset.name;
             list.classList.add('hidden');
-            // Auto-select the ingredient's default unit in this row's unit dropdown.
+            // Auto-select the ingredient's default unit in the nearest unit dropdown.
             var defaultUnit = item.dataset.unit || '';
             if(defaultUnit){
+                // Recipe form: unit is inside .ingredient-row > .unit-select
                 var row = box.closest('.ingredient-row');
-                if(row){
-                    var unitSel = row.querySelector('.unit-select');
-                    if(unitSel) unitSel.value = defaultUnit;
+                var unitSel = row ? row.querySelector('.unit-select') : null;
+                // Pantry/dashboard form: unit is a sibling select[name="unit"] in the same <form>
+                if(!unitSel){
+                    var form = box.closest('form');
+                    if(form){
+                        unitSel = form.querySelector('select[name="unit"]');
+                    }
                 }
+                if(unitSel) unitSel.value = defaultUnit;
             }
         });
     });

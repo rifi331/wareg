@@ -256,6 +256,58 @@ func safeURL(u string) string {
 	return ""
 }
 
+// videoEmbedHTML parses a YouTube or Instagram URL and returns a responsive
+// iframe embed. Returns "" for empty/unknown URLs.
+func videoEmbedHTML(rawURL string) string {
+	u := safeURL(rawURL)
+	if u == "" {
+		return ""
+	}
+	lower := strings.ToLower(u)
+
+	if strings.Contains(lower, "youtube.com") || strings.Contains(lower, "youtu.be") {
+		id := extractYouTubeID(u)
+		if id == "" {
+			return ""
+		}
+		return `<div class="relative w-full mb-6" style="padding-bottom:56.25%"><iframe class="absolute inset-0 w-full h-full rounded-lg shadow-lg" src="https://www.youtube.com/embed/` + id + `" title="Recipe video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+	}
+
+	if strings.Contains(lower, "instagram.com") {
+		// Instagram supports /embed/ suffix on any post/reel URL
+		embedURL := strings.TrimRight(u, "/") + "/embed/"
+		return `<div class="relative w-full mb-6 flex justify-center"><iframe class="rounded-lg shadow-lg" src="` + esc(embedURL) + `" title="Recipe video" frameborder="0" allowfullscreen scrolling="no" width="400" height="720" loading="lazy"></iframe></div>`
+	}
+
+	return ""
+}
+
+// extractYouTubeID pulls the 11-char video ID from common YouTube URL formats.
+func extractYouTubeID(u string) string {
+	if i := strings.Index(u, "youtu.be/"); i >= 0 {
+		rest := u[i+len("youtu.be/"):]
+		return splitVideoID(rest)
+	}
+	if i := strings.Index(u, "v="); i >= 0 {
+		rest := u[i+2:]
+		return splitVideoID(rest)
+	}
+	if i := strings.Index(u, "/embed/"); i >= 0 {
+		rest := u[i+len("/embed/"):]
+		return splitVideoID(rest)
+	}
+	return ""
+}
+
+func splitVideoID(s string) string {
+	for _, sep := range []string{"&", "?", "/"} {
+		if i := strings.Index(s, sep); i >= 0 {
+			s = s[:i]
+		}
+	}
+	return s
+}
+
 func atoiParam(c echolib.Context, name string) (int, bool) {
 	id, err := strconv.Atoi(c.Param(name))
 	if err != nil || id <= 0 {
@@ -1250,8 +1302,10 @@ func renderRecipeDetail(r Recipe) string {
 	if r.Description != "" {
 		b.WriteString(`<p class="text-gray-600 text-base sm:text-lg mb-4">` + esc(r.Description) + `</p>`)
 	}
-	if v := safeURL(r.VideoURL); v != "" {
-		b.WriteString(`<a href="` + esc(v) + `" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg hover:bg-red-700 transition">`)
+	if embed := videoEmbedHTML(r.VideoURL); embed != "" {
+		b.WriteString(embed)
+	} else if v := safeURL(r.VideoURL); v != "" {
+		b.WriteString(`<a href="` + esc(v) + `" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-lg hover:bg-red-700 transition mb-6">`)
 		b.WriteString(`<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Watch Video</a>`)
 	}
 	b.WriteString(`</div></div>`)
@@ -1452,7 +1506,7 @@ func unitOptionsGo(name, selected string, required bool) string {
 
 // assetVersion is appended to static asset URLs to bust browser caches after
 // updates. Bump this when recipe-form.js changes.
-const assetVersion = "2"
+const assetVersion = "3"
 
 // pageShell wraps content in a full HTML document with a working standalone
 // navigation (no reliance on a global showSection). It reuses the shared
