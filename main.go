@@ -162,8 +162,14 @@ func main() {
 	e.Use(middleware.CORS())
 	e.Use(middleware.RequestID())
 
-	// Static files (the original image dir was empty + not copied into Docker).
-	e.Static("/static", "static")
+	// Static files — served with no-cache so browsers always re-download JS/CSS
+	// after updates (prevents stale recipe-form.js). (see RECREATE_PROMPT 5.16)
+	e.Group("/static", func(next echolib.HandlerFunc) echolib.HandlerFunc {
+		return func(c echolib.Context) error {
+			c.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			return next(c)
+		}
+	}).Static("/", "static")
 
 	// Health endpoint used by Docker/k8s probes (accept GET and HEAD — probes
 	// like `wget --spider` issue HEAD requests).
@@ -1444,6 +1450,10 @@ func unitOptionsGo(name, selected string, required bool) string {
 	return b.String()
 }
 
+// assetVersion is appended to static asset URLs to bust browser caches after
+// updates. Bump this when recipe-form.js changes.
+const assetVersion = "2"
+
 // pageShell wraps content in a full HTML document with a working standalone
 // navigation (no reliance on a global showSection). It reuses the shared
 // static/recipe-form.js for toasts (single source of truth). (see 5.9)
@@ -1474,7 +1484,7 @@ func pageShell(title, content string) string {
 <main class="max-w-4xl mx-auto px-4 py-8">
 ` + content + `
 </main>
-<script src="/static/recipe-form.js"></script>
+<script src="/static/recipe-form.js?v=` + assetVersion + `"></script>
 </body>
 </html>`
 }
