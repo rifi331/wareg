@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/yourusername/wareg
+  repository: ghcr.io/rifi331/wareg
   pullPolicy: IfNotPresent
   tag: "latest"
 
@@ -37,59 +37,34 @@ ingress:
   enabled: false
   className: "traefik"
   annotations: {}
-    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
   hosts:
     - host: cooking-app.example.com
       paths:
         - path: /
           pathType: Prefix
   tls: []
-  #  - secretName: cooking-app-tls
-  #    hosts:
-  #      - cooking-app.example.com
 
-resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 250m
-  #   memory: 256Mi
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-# Database Configuration
+# Database — set DATABASE_URL here OR use existingSecret (recommended).
 database:
-  url: "postgres://YOUR_DB_USER:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/YOUR_DB_NAME?search_path=wareg"
-  # Prefer a Kubernetes Secret in production. Set existingSecret to its name and
-  # (optionally) secretKey to the key holding DATABASE_URL (default: database-url).
+  url: "postgres://postgres:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres?search_path=wareg"
   existingSecret: ""
   secretKey: "database-url"
+
+# HTTP Basic Auth — set to "user1:pass1,user2:pass2" to enable, leave empty
+# to disable auth entirely (not recommended for public deployments).
+authUsers: ""
 
 # Environment variables
 env:
   port: "7001"
-
-# Persistence
-persistence:
-  enabled: false
-  # existingClaim: "wareg-pvc"
-  # storageClass: "local-path"
-  # accessModes:
-  #   - ReadWriteOnce
-  # size: 1Gi
-  # mountPath: /app/data
 
 # Health check
 livenessProbe:

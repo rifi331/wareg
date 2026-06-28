@@ -29,6 +29,12 @@
             <button onclick="toggleRecipeForm()" class="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition">Add New Recipe</button>
         </div>
 
+        <div class="mb-6">
+            <input type="text" id="recipe-search" placeholder="Search recipes by title or description..."
+                   class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                   oninput="filterRecipes(this.value)">
+        </div>
+
         <div id="recipe-form-container" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden"></div>
 
         <div id="recipes-list" hx-get="/api/recipes" hx-trigger="load" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>

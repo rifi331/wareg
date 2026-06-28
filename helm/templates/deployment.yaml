@@ -35,6 +35,10 @@ spec:
           {{- end }}
         - name: PORT
           value: {{ .Values.env.port | quote }}
+        {{- if .Values.authUsers }}
+        - name: AUTH_USERS
+          value: {{ .Values.authUsers | quote }}
+        {{- end }}
         ports:
         - name: http
           containerPort: {{ .Values.service.port }}

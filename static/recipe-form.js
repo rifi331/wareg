@@ -10,11 +10,15 @@ function escapeHtml(s){
         .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
-function unitOptionsHTML(name, required){
-    return '<select name="'+name+'"'+(required?' required':'')+' class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">' +
-        '<option value="">Unit</option>' +
-        WaregUnits.map(function(u){ return '<option value="'+u+'">'+u+'</option>'; }).join('') +
-        '</select>';
+function unitOptionsHTML(name, required, selected){
+    var sel = selected || '';
+    var h = '<select name="'+name+'"'+(required?' required':'')+' class="unit-select w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500">' +
+        '<option value="">Unit</option>';
+    WaregUnits.forEach(function(u){
+        h += '<option value="'+u+'"'+(u===sel?' selected':'')+'>'+u+'</option>';
+    });
+    h += '</select>';
+    return h;
 }
 
 function fillUnitSelects(){
@@ -48,6 +52,27 @@ document.body.addEventListener('htmx:beforeSwap', function(evt){
     if(x.status >= 400){
         evt.detail.shouldSwap = false;
         showToast((x.responseText || 'Operation failed.').trim(), 'error');
+    }
+});
+
+// Global toast for any successful HTMX create/delete (covers pages that don't
+// wire their own after-request handlers).
+document.body.addEventListener('htmx:afterRequest', function(evt){
+    var x = evt.detail && evt.detail.xhr;
+    if(!x || typeof x.status === 'undefined') return;
+    if(x.status >= 200 && x.status < 300){
+        var m = (x.method || '').toUpperCase();
+        var u = x.url || '';
+        // Only show for DELETE (POST results are handled by form-specific handlers
+        // to avoid duplicate toasts). This covers delete buttons everywhere.
+        if(m === 'DELETE'){
+            if(u.indexOf('/api/recipes') >= 0) showToast('Recipe deleted.', 'success');
+            else if(u.indexOf('/api/ingredients') >= 0) showToast('Ingredient deleted.', 'success');
+            else if(u.indexOf('/api/pantry') >= 0) showToast('Pantry item removed.', 'success');
+            else if(u.indexOf('/api/meal-plan') >= 0) showToast('Meal removed.', 'success');
+        }
+    } else if(x.status === 0){
+        showToast('Network error — please try again.', 'error');
     }
 });
 
@@ -97,6 +122,8 @@ function fillRecipeSelects(){
 // ----- Searchable / typeable ingredient picker (combobox) -----
 // Renders a text input (type to filter) + a hidden id field (the submitted
 // value) + a suggestion dropdown. Lets users type OR pick from the list.
+// When an ingredient is selected, the unit dropdown in the same row is
+// auto-set to the ingredient's default unit.
 function ingredientComboHTML(name){
     return '<div class="ingredient-combo relative flex-1 min-w-[180px]">' +
         '<input type="text" class="ic-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Type or search ingredient..." autocomplete="off">' +
@@ -122,7 +149,7 @@ function wireIngredientCombos(){
             if(matches.length === 0){ list.classList.add('hidden'); return; }
             list.innerHTML = matches.map(function(i){
                 var unitTxt = i.unit ? ' <span class="text-gray-400">('+escapeHtml(i.unit)+')</span>' : '';
-                return '<div class="ic-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm" data-id="'+i.id+'" data-name="'+escapeHtml(i.name)+'">'+escapeHtml(i.name)+unitTxt+'</div>';
+                return '<div class="ic-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm" data-id="'+i.id+'" data-name="'+escapeHtml(i.name)+'" data-unit="'+escapeHtml(i.unit||'')+'">'+escapeHtml(i.name)+unitTxt+'</div>';
             }).join('');
             list.classList.remove('hidden');
         }
@@ -135,6 +162,15 @@ function wireIngredientCombos(){
             idField.value = item.dataset.id;
             input.value = item.dataset.name;
             list.classList.add('hidden');
+            // Auto-select the ingredient's default unit in this row's unit dropdown.
+            var defaultUnit = item.dataset.unit || '';
+            if(defaultUnit){
+                var row = box.closest('.ingredient-row');
+                if(row){
+                    var unitSel = row.querySelector('.unit-select');
+                    if(unitSel) unitSel.value = defaultUnit;
+                }
+            }
         });
     });
 }
@@ -207,11 +243,38 @@ function addStepRow(){
     list.appendChild(div.firstElementChild);
 }
 
+// ----- Quick-add ingredient (inline, inside recipe form) -----
+// Lets the user create a new ingredient without leaving the recipe form.
+function quickAddIngredient(){
+    var nameInput = document.getElementById('quick-ingredient-name');
+    var unitInput = document.getElementById('quick-ingredient-unit');
+    if(!nameInput || !unitInput) return;
+    var name = nameInput.value.trim();
+    var unit = unitInput.value.trim();
+    if(!name){ showToast('Enter an ingredient name first.', 'error'); return; }
+
+    fetch('/api/ingredients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'name=' + encodeURIComponent(name) + '&unit=' + encodeURIComponent(unit)
+    }).then(function(resp){
+        if(!resp.ok) return resp.text().then(function(t){ throw new Error(t || 'Failed'); });
+        return refreshIngredientCache();
+    }).then(function(){
+        showToast('Ingredient "' + name + '" added.', 'success');
+        nameInput.value = '';
+        unitInput.value = '';
+        wireIngredientCombos();
+    }).catch(function(err){
+        showToast((err.message || 'Could not add ingredient.').trim(), 'error');
+    });
+}
+
 function recipeFormHTML(){
     return '' +
     '<h3 class="text-xl font-semibold mb-4">Add New Recipe</h3>' +
-    '<form hx-post="/api/recipes" hx-target="#recipes-list" hx-swap="innerHTML" ' +
-    'hx-on::after-request="if(event.detail.xhr.status<300){document.getElementById(\'recipe-form-container\').classList.add(\'hidden\'); showToast(\'Recipe created.\',\'success\');}" ' +
+    '<form action="/api/recipes" method="post" hx-post="/api/recipes" hx-target="#recipes-list" hx-swap="innerHTML" ' +
+    'hx-on::after-request="if(event.detail.xhr.status<300){document.getElementById(\'recipe-form-container\').classList.add(\'hidden\'); document.getElementById(\'recipe-form-container\').innerHTML=\'\'; showToast(\'Recipe created.\',\'success\');}" ' +
     'class="space-y-4">' +
       '<div><label class="block text-sm font-medium mb-1">Title *</label><input type="text" name="title" required class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"></div>' +
       '<div><label class="block text-sm font-medium mb-1">Description</label><textarea name="description" rows="2" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea></div>' +
@@ -225,6 +288,17 @@ function recipeFormHTML(){
         '<div><label class="block text-sm font-medium mb-1">Carbs (g)</label><input type="number" step="0.1" name="nutrition.carbs" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"></div>' +
         '<div><label class="block text-sm font-medium mb-1">Fats (g)</label><input type="number" step="0.1" name="nutrition.fats" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"></div>' +
       '</div>' +
+
+      // ----- Quick-add ingredient box -----
+      '<div class="bg-gray-50 border border-gray-200 rounded-lg p-3">' +
+        '<div class="text-sm font-semibold text-gray-700 mb-2">Quick-add an ingredient (if not in list)</div>' +
+        '<div class="flex gap-2 items-end flex-wrap">' +
+          '<div class="flex-1 min-w-[160px]"><label class="block text-xs font-medium mb-1">Name</label><input type="text" id="quick-ingredient-name" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="e.g. Egg yolk"></div>' +
+          '<div class="w-32"><label class="block text-xs font-medium mb-1">Default unit</label>' + unitOptionsHTML('quick-ingredient-unit', false) + '</div>' +
+          '<button type="button" onclick="quickAddIngredient()" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm">+ Add ingredient</button>' +
+        '</div>' +
+      '</div>' +
+
       '<div class="border-t pt-4"><div class="flex justify-between items-center mb-3"><h4 class="text-lg font-semibold">Ingredients</h4>' +
         '<button type="button" onclick="addIngredientRow()" class="bg-gray-600 text-white px-3 py-1.5 rounded-md hover:bg-gray-700 text-sm">+ Add</button></div>' +
         '<div id="recipe-ingredients-list" class="space-y-2">' + ingredientRowHTML(0) + '</div></div>' +
@@ -245,5 +319,33 @@ function toggleRecipeForm(){
     if(!c.classList.contains('hidden')){
         c.innerHTML = recipeFormHTML();
         fillIngredientSelects();
+        // CRITICAL: tell HTMX to scan the newly-injected form for hx-* attributes.
+        // Without this, the browser falls back to a native GET submission.
+        if(window.htmx && typeof htmx.process === 'function'){
+            htmx.process(c);
+        }
+    } else {
+        c.innerHTML = '';
     }
+}
+
+// ----- Recipe search/filter -----
+function filterRecipes(query){
+    var q = (query || '').trim().toLowerCase();
+    var cards = document.querySelectorAll('#recipes-list [id^="recipe-"]');
+    cards.forEach(function(card){
+        if(!q){
+            card.style.display = '';
+            return;
+        }
+        var titleEl = card.querySelector('h3, h2');
+        var descEl = card.querySelector('p');
+        var title = titleEl ? titleEl.textContent.toLowerCase() : '';
+        var desc = descEl ? descEl.textContent.toLowerCase() : '';
+        if(title.indexOf(q) >= 0 || desc.indexOf(q) >= 0){
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
 }
