@@ -1000,12 +1000,10 @@ func (s *Server) findMatchingRecipes(c echolib.Context) error {
 			}
 		}
 		if mandatoryTotal == 0 {
-			continue // a recipe with no mandatory ingredients is never a 100% match
+			continue // skip recipes with no mandatory ingredients
 		}
 		pct := float64(available) / float64(mandatoryTotal) * 100
-		if pct >= matchThreshold*100 {
-			matches = append(matches, RecipeMatch{Recipe: r, MatchPercentage: pct, MissingIngredients: missing})
-		}
+		matches = append(matches, RecipeMatch{Recipe: r, MatchPercentage: pct, MissingIngredients: missing})
 	}
 
 	sort.SliceStable(matches, func(i, j int) bool {
@@ -1249,7 +1247,7 @@ func emptyCard(msg string) string {
 
 func renderMatches(matches []RecipeMatch) string {
 	if len(matches) == 0 {
-		return emptyCard("No recipes match your pantry yet (need at least 80% of the ingredients). Add more to your pantry!")
+		return emptyCard("No recipes found. Add some recipes first!")
 	}
 	var b strings.Builder
 	for _, m := range matches {
@@ -1260,8 +1258,10 @@ func renderMatches(matches []RecipeMatch) string {
 		badge := "bg-yellow-100 text-yellow-800"
 		if m.MatchPercentage >= 100 {
 			badge = "bg-green-100 text-green-800"
+		} else if m.MatchPercentage < 50 {
+			badge = "bg-red-100 text-red-800"
 		}
-		missing := `<p class="text-sm text-green-600 mb-2">You have all the ingredients!</p>`
+		missing := `<p class="text-sm text-green-600 mb-2">All ingredients available!</p>`
 		if len(m.MissingIngredients) > 0 {
 			escaped := make([]string, len(m.MissingIngredients))
 			for i, name := range m.MissingIngredients {
@@ -1273,11 +1273,7 @@ func renderMatches(matches []RecipeMatch) string {
 		if m.Recipe.Description != "" {
 			desc = `<p class="text-gray-600 text-sm mb-3">` + esc(m.Recipe.Description) + `</p>`
 		}
-		video := ""
-		if v := safeURL(m.Recipe.VideoURL); v != "" {
-			video = `<a href="` + esc(v) + `" target="_blank" rel="noopener" class="text-emerald-600 text-sm hover:underline block mt-2">Watch Video</a>`
-		}
-		b.WriteString(`<div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">`)
+		b.WriteString(`<div class="match-card bg-white rounded-lg shadow-md overflow-hidden flex flex-col" data-title="` + esc(strings.ToLower(m.Recipe.Title)) + `" data-missing="` + esc(strings.ToLower(strings.Join(m.MissingIngredients, " "))) + `">`)
 		b.WriteString(image)
 		b.WriteString(`<div class="p-4 flex-1 flex flex-col">`)
 		b.WriteString(`<div class="flex justify-between items-start mb-2 gap-2">`)
@@ -1287,7 +1283,6 @@ func renderMatches(matches []RecipeMatch) string {
 		b.WriteString(desc)
 		b.WriteString(missing)
 		b.WriteString(`<a href="/recipes/` + strconv.Itoa(m.Recipe.ID) + `" class="mt-auto text-xs text-emerald-600 font-semibold">View Recipe →</a>`)
-		b.WriteString(video)
 		b.WriteString(`</div></div>`)
 	}
 	return b.String()
@@ -1506,7 +1501,7 @@ func unitOptionsGo(name, selected string, required bool) string {
 
 // assetVersion is appended to static asset URLs to bust browser caches after
 // updates. Bump this when recipe-form.js changes.
-const assetVersion = "3"
+const assetVersion = "4"
 
 // pageShell wraps content in a full HTML document with a working standalone
 // navigation (no reliance on a global showSection). It reuses the shared

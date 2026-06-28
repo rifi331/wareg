@@ -355,3 +355,22 @@ function filterRecipes(query){
         }
     });
 }
+
+// ----- Matches (What Can I Cook?) search/filter -----
+function filterMatches(query){
+    var q = (query || '').trim().toLowerCase();
+    var cards = document.querySelectorAll('#matches-list .match-card');
+    cards.forEach(function(card){
+        if(!q){
+            card.style.display = '';
+            return;
+        }
+        var title = card.getAttribute('data-title') || '';
+        var missing = card.getAttribute('data-missing') || '';
+        if(title.indexOf(q) >= 0 || missing.indexOf(q) >= 0){
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}

@@ -141,16 +141,18 @@
         <!-- What Can I Cook -->
         <div id="matches-section" class="section hidden">
             <h2 class="text-3xl font-bold mb-2 text-gray-800">What Can I Cook?</h2>
-            <p class="text-gray-600 mb-6">Shows recipes where your pantry has at least <strong>80%</strong> of the <strong>mandatory</strong> ingredients by name (optional ingredients are ignored; you convert units yourself). Sorted by match %.</p>
-            <div id="matches-list" hx-get="/api/pantry/matches" hx-trigger="load" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
-            <div class="mt-4">
-                <button onclick="htmx.trigger('#matches-list','load')" class="text-sm text-emerald-600 hover:underline">Refresh matches</button>
+            <p class="text-gray-600 mb-4">All recipes ranked by pantry match %. Green = ready to cook, red = many missing ingredients.</p>
+            <div class="mb-6">
+                <input type="text" id="matches-search" placeholder="Search by recipe name or missing ingredient..."
+                       class="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       oninput="filterMatches(this.value)">
             </div>
+            <div id="matches-list" hx-get="/api/pantry/matches" hx-trigger="load" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
         </div>
     </main>
 
     <!-- Shared front-end logic (recipe form, toasts, dropdowns, units) -->
-    <script src="/static/recipe-form.js?v=3"></script>
+    <script src="/static/recipe-form.js?v=4"></script>
     <script>
         // Dashboard-specific tab navigation + init.
         function showSection(name){
@@ -161,6 +163,15 @@
             });
             if(name === 'recipes' || name === 'pantry' || name === 'meal-plan'){
                 refreshSelects();
+            }
+            // Always re-fetch "What Can I Cook?" so it reflects latest pantry state
+            if(name === 'matches'){
+                var ml = document.getElementById('matches-list');
+                if(ml){
+                    var search = document.getElementById('matches-search');
+                    if(search) search.value = '';
+                    htmx.trigger(ml, 'load');
+                }
             }
         }
         function refreshSelects(){ fillIngredientSelects(); fillRecipeSelects(); }
