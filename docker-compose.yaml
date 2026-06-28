@@ -1,0 +1,18 @@
+services:
+  wareg:
+    container_name: wareg
+    environment:
+      AUTH_USERS: "user1:password1, user2:password2"
+      DATABASE_URL: "postgres://postgres:YOUR_DB_PASSWORD@YOUR_DB_HOST:5432/postgres?search_path=wareg"
+      PORT: "7001"
+    image: ghcr.io/rifi331/wareg:main
+    ports:
+      - "7001:7001"
+    pull_policy: always
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7001/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
