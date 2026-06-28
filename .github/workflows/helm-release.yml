@@ -34,7 +34,7 @@ jobs:
       run: |
         mkdir -p charts
         helm package helm --destination charts
-        ls -1 charts/wareg-cooking-app-*.tgz
+        ls -1 charts/*.tgz
 
     - name: Merge existing index (preserve prior versions)
       run: |
